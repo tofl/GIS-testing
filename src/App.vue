@@ -1,12 +1,6 @@
 <template>
   <div id="app">
     <WebMap ref="map" />
-    <span
-      class="nearestRoute"
-      @click="$refs.map.calculateNearestRoute()"
-    >
-      Go to the nearest station
-    </span>
   </div>
 </template>
 
@@ -33,11 +27,7 @@ html,body {
   display: flex;
   padding: 0;
   margin: 0;
-  width: 800px;
+  width: 90%;
   height: 100%;
-}
-
-.nearestRoute {
-  cursor: pointer;
 }
 </style>

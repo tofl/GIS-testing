@@ -88,7 +88,6 @@ export default {
           // Show the starting location
 
           // On click, calculate the route to the closest station
-          console.log(this.view.graphics);
           this.view.on('click', (event) => {
             this.view.graphics.removeAll();
             this.graphicsLayer = null;
@@ -220,6 +219,7 @@ export default {
         })
         .catch((e) => {
           console.log(e);
+          this.view.graphics.removeAll();
         });
     },
   },

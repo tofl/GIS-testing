@@ -23,10 +23,8 @@ export default {
         'esri/layers/VectorTileLayer',
         'esri/layers/FeatureLayer',
         'esri/widgets/Search',
-        'esri/tasks/RouteTask',
-        'esri/tasks/support/RouteParameters',
-        'esri/tasks/support/FeatureSet',
         'esri/Graphic',
+        'esri/layers/GraphicsLayer',
       ],
       { css: true },
     )
@@ -38,10 +36,8 @@ export default {
           VectorTileLayer,
           FeatureLayer,
           Search,
-          RouteTask,
-          RouteParameters,
-          FeatureSet,
           Graphic,
+          GraphicsLayer,
         ]) => {
           const basemap = new Basemap({
             baseLayers: [
@@ -59,7 +55,7 @@ export default {
             container: this.$el,
             map,
             center: [4.835659, 45.764043],
-            zoom: 8,
+            zoom: 10,
           });
 
           const stations = new FeatureLayer({
@@ -68,63 +64,47 @@ export default {
               title: '{name}',
               content: '<b>Location:</b> {address}, {postcode}, {city}<br /><b>Capacity:</b> {capacity}kg/j',
             },
+            renderer: {
+              type: 'simple',
+              symbol: {
+                type: 'picture-marker',
+                url: 'station-icon.png',
+                width: '18px',
+                height: '18px',
+              },
+            },
           });
           map.add(stations);
 
           const search = new Search({ view: this.view });
           this.view.ui.add(search, 'top-right');
 
-          // Routing
-          const routeTask = new RouteTask({
-            url: 'https://utility.arcgis.com/usrsvcs/appservices/dXeBnGTog3xiTAxJ/rest/services/World/Route/NAServer/Route_World/solve',
-          });
+          // Show the starting location
+          const graphicsLayer = new GraphicsLayer();
+          map.add(graphicsLayer);
 
-          const getRoute = () => {
-            const routeParams = new RouteParameters({
-              stops: new FeatureSet({
-                features: this.view.graphics.toArray(), // Pass the array of graphics
-              }),
-              returnDirections: true,
-            });
-
-            // Get the route
-            routeTask.solve(routeParams).then((data) => {
-              // Display the route
-              data.routeResults.forEach((result) => {
-                const res = result;
-                res.route.symbol = {
-                  type: 'simple-line',
-                  color: [5, 150, 255],
-                  width: 3,
-                };
-                this.view.graphics.add(res.route);
-              });
-            });
+          const point = {
+            type: 'point',
+            longitude: 4.825831386169402,
+            latitude: 45.75218614077687,
           };
 
-          const addGraphic = (type, point) => {
-            const graphic = new Graphic({
-              symbol: {
-                type: 'simple-marker',
-                color: type === 'start' ? 'white' : 'black',
-                size: '8px',
-              },
-              geometry: point,
-            });
-            this.view.graphics.add(graphic);
+          const simpleMarkerSymbol = {
+            type: 'simple-marker',
+            color: [168, 0, 6], // orange
+            outline: {
+              color: [255, 255, 255], // white
+              width: 1,
+            },
+            size: 5,
           };
 
-          this.view.on('click', (event) => {
-            if (this.view.graphics.length === 0) {
-              addGraphic('start', event.mapPoint);
-            } else if (this.view.graphics.length === 1) {
-              addGraphic('finish', event.mapPoint);
-              getRoute();
-            } else {
-              this.view.graphics.removeAll();
-              addGraphic('start', event.mapPoint);
-            }
+          const pointGraphic = new Graphic({
+            geometry: point,
+            symbol: simpleMarkerSymbol,
           });
+
+          graphicsLayer.add(pointGraphic);
         },
       );
   },

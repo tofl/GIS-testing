@@ -1,6 +1,12 @@
 <template>
   <div id="app">
-    <WebMap />
+    <WebMap ref="map" />
+    <span
+      class="nearestRoute"
+      @click="$refs.map.calculateNearestRoute()"
+    >
+      Go to the nearest station
+    </span>
   </div>
 </template>
 
@@ -10,6 +16,8 @@ import WebMap from './components/WebMap.vue';
 export default {
   name: 'App',
   components: { WebMap },
+
+  methods: {},
 };
 </script>
 
@@ -27,5 +35,9 @@ html,body {
   margin: 0;
   width: 800px;
   height: 100%;
+}
+
+.nearestRoute {
+  cursor: pointer;
 }
 </style>

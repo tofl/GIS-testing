@@ -58,8 +58,8 @@ export default {
           this.view = new MapView({
             container: this.$el,
             map,
-            center: [-118.24532, 34.05398],
-            zoom: 12,
+            center: [4.835659, 45.764043],
+            zoom: 8,
           });
 
           const stations = new FeatureLayer({
@@ -76,7 +76,7 @@ export default {
 
           // Routing
           const routeTask = new RouteTask({
-            url: 'https://route.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World',
+            url: 'https://utility.arcgis.com/usrsvcs/appservices/dXeBnGTog3xiTAxJ/rest/services/World/Route/NAServer/Route_World/solve',
           });
 
           const getRoute = () => {

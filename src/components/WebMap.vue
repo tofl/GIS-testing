@@ -6,7 +6,6 @@
 import { loadModules } from 'esri-loader';
 import axios from 'axios';
 import qs from 'qs';
-// import FormData from 'form-data';
 
 export default {
   name: 'WebMap',
@@ -16,6 +15,7 @@ export default {
       view: null,
       graphicsLayer: null,
       Graphic: null,
+      stations: null,
     };
   },
 
@@ -29,7 +29,6 @@ export default {
         'esri/layers/FeatureLayer',
         'esri/widgets/Search',
         'esri/Graphic',
-        'esri/layers/GraphicsLayer',
       ],
       { css: true },
     )
@@ -42,7 +41,6 @@ export default {
           FeatureLayer,
           Search,
           Graphic,
-          GraphicsLayer,
         ]) => {
           this.Graphic = Graphic;
           const basemap = new Basemap({
@@ -66,10 +64,6 @@ export default {
 
           const stations = new FeatureLayer({
             url: 'https://services1.arcgis.com/RfENbnrgvatBVii0/arcgis/rest/services/stations/FeatureServer',
-            popupTemplate: {
-              title: '{name}',
-              content: '<b>Location:</b> {address}, {postcode}, {city}<br /><b>Capacity:</b> {capacity}kg/j',
-            },
             renderer: {
               type: 'simple',
               symbol: {
@@ -85,143 +79,55 @@ export default {
           const search = new Search({ view: this.view });
           this.view.ui.add(search, 'top-right');
 
-          // Show the starting location
-
-          // On click, calculate the route to the closest station
+          // On click, add station to compare
           this.view.on('click', (event) => {
-            this.view.graphics.removeAll();
-            this.graphicsLayer = null;
+            this.view.hitTest(event)
+              .then(({ results: layers }) => {
+                layers.forEach(async (layer) => {
+                  if (layer.graphic.layer.title !== 'Stations 0') return;
+                  // Check if one of the points is already in the array
+                  if (
+                    this.$store.state.comparedStations.map((station) => station.objectId)
+                      .indexOf(layer.graphic.attributes.ObjectId) > -1
+                  ) { return; }
 
-            this.graphicsLayer = new GraphicsLayer();
-            map.add(this.graphicsLayer);
+                  if (!this.stations) {
+                    const body = qs.stringify({
+                      f: 'json',
+                      outFields: 'ObjectId,name,zone,address,postcode,city,capacity',
+                      outSr: 4326,
+                      where: '1=1',
+                    });
 
-            const point = {
-              type: 'point',
-              longitude: event.mapPoint.longitude,
-              latitude: event.mapPoint.latitude,
-            };
+                    const config = {
+                      method: 'post',
+                      url: 'https://services1.arcgis.com/RfENbnrgvatBVii0/arcgis/rest/services/stations/FeatureServer/stations_0/query',
+                      headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                      },
+                      data: body,
+                    };
 
-            const simpleMarkerSymbol = {
-              type: 'simple-marker',
-              color: [168, 0, 6], // orange
-              outline: {
-                color: [255, 255, 255], // white
-                width: 1,
-              },
-              size: 5,
-            };
+                    await axios(config)
+                      .then(({ data }) => {
+                        this.stations = data;
+                      });
+                  }
 
-            const pointGraphic = new Graphic({
-              geometry: point,
-              symbol: simpleMarkerSymbol,
-            });
-
-            this.view.graphics.add(pointGraphic);
-            this.calculateNearestRoute(event.mapPoint.latitude, event.mapPoint.longitude);
+                  const comparedStation = {
+                    objectId: layer.graphic.attributes.ObjectId,
+                    latitude: layer.graphic.geometry.latitude,
+                    longitude: layer.graphic.geometry.longitude,
+                    ...this.stations.features.filter((station) => station.attributes.ObjectId
+                      === layer.graphic.attributes.ObjectId)[0].attributes,
+                  };
+                  this.$store.commit('addStation', comparedStation);
+                  console.log(this.$store.state.comparedStations);
+                });
+              });
           });
         },
       );
-  },
-
-  methods: {
-    calculateNearestRoute(latitude, longitude) {
-      const body = qs.stringify({
-        f: 'json',
-        outFields: 'name,zone,address,postcode,city,capacity',
-        outSr: 4326,
-        where: '1=1',
-      });
-
-      const config = {
-        method: 'post',
-        url: 'https://services1.arcgis.com/RfENbnrgvatBVii0/arcgis/rest/services/stations/FeatureServer/stations_0/query',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        data: body,
-      };
-
-      axios(config)
-        .then(({ data }) => {
-          // Build the body of the nearestFacility query
-          const facilities = {
-            features: [],
-          };
-          data.features.forEach((feature) => {
-            const obj = {
-              geometry: {
-                ...feature.geometry,
-                spatialReference: {
-                  wkid: 4326,
-                },
-              },
-              attributes: {
-                name: feature.attributes.name,
-              },
-            };
-            facilities.features.push(obj);
-          });
-
-          // Incidents
-          const incidents = {
-            features: [
-              {
-                geometry: {
-                  x: longitude,
-                  y: latitude,
-                  spatialReference: {
-                    wkid: 4326,
-                  },
-                },
-                attributes: {
-                  name: 'Centre de Lyon',
-                },
-              },
-            ],
-          };
-
-          // Send the request
-          const form = new FormData();
-          form.append('f', 'json');
-          form.append('returnDirections', 'true');
-          form.append('returnCFRoutes', 'true');
-          form.append('incidents', JSON.stringify(incidents));
-          form.append('facilities', JSON.stringify(facilities));
-
-          axios({
-            method: 'post',
-            url: 'https://utility.arcgis.com/usrsvcs/appservices/qWHwb4vIJpx4kuri/rest/services/World/ClosestFacility/NAServer/ClosestFacility_World/solveClosestFacility',
-            headers: { 'Content-Type': 'multipart/form-data' },
-            data: form,
-          })
-            .then((response) => {
-              // Add a line to the map, showing the directions:
-              const simpleLineSymbol = {
-                type: 'simple-line',
-                color: [226, 119, 40], // orange
-                width: 2,
-              };
-
-              const directions = response.data.routes.features[0].geometry.paths;
-
-              const polyline = {
-                type: 'polyline',
-                paths: directions,
-              };
-
-              const polylineGraphic = new this.Graphic({
-                geometry: polyline,
-                symbol: simpleLineSymbol,
-              });
-
-              this.view.graphics.add(polylineGraphic);
-            });
-        })
-        .catch((e) => {
-          console.log(e);
-          this.view.graphics.removeAll();
-        });
-    },
   },
 };
 </script>

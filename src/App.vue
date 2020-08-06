@@ -23,7 +23,7 @@
             v-for="station in $store.state.comparedStations"
             :key="station.objectId"
           >
-            {{ station.objectId }}
+            {{ station.ObjectId }}
           </td>
         </tr>
 
@@ -53,7 +53,7 @@
             v-for="station in $store.state.comparedStations"
             :key="station.objectId"
           >
-            {{ station.Address }}
+            {{ station.address }}
           </td>
         </tr>
 

@@ -29,6 +29,7 @@ export default {
         'esri/layers/FeatureLayer',
         'esri/widgets/Search',
         'esri/Graphic',
+        'esri/renderers/UniqueValueRenderer',
       ],
       { css: true },
     )
@@ -41,6 +42,7 @@ export default {
           FeatureLayer,
           Search,
           Graphic,
+          UniqueValueRenderer,
         ]) => {
           this.Graphic = Graphic;
           const basemap = new Basemap({
@@ -62,16 +64,18 @@ export default {
             zoom: 10,
           });
 
+          const stationsSymbol = {
+            type: 'picture-marker',
+            url: 'station-icon.png',
+            width: '18px',
+            height: '18px',
+          };
+
           const stations = new FeatureLayer({
             url: 'https://services1.arcgis.com/RfENbnrgvatBVii0/arcgis/rest/services/stations/FeatureServer',
             renderer: {
               type: 'simple',
-              symbol: {
-                type: 'picture-marker',
-                url: 'station-icon.png',
-                width: '18px',
-                height: '18px',
-              },
+              symbol: stationsSymbol,
             },
           });
           map.add(stations);
@@ -83,8 +87,10 @@ export default {
           this.view.on('click', (event) => {
             this.view.hitTest(event)
               .then(({ results: layers }) => {
+                let stationsLayerClicked = false;
                 layers.forEach(async (layer) => {
                   if (layer.graphic.layer.title !== 'Stations 0') return;
+                  stationsLayerClicked = true;
                   // Check if one of the points is already in the array
                   if (
                     this.$store.state.comparedStations.map((station) => station.objectId)
@@ -115,15 +121,41 @@ export default {
                   }
 
                   const comparedStation = {
-                    objectId: layer.graphic.attributes.ObjectId,
                     latitude: layer.graphic.geometry.latitude,
                     longitude: layer.graphic.geometry.longitude,
                     ...this.stations.features.filter((station) => station.attributes.ObjectId
                       === layer.graphic.attributes.ObjectId)[0].attributes,
                   };
                   this.$store.commit('addStation', comparedStation);
-                  console.log(this.$store.state.comparedStations);
+
+                  const uniqueValueInfos = [];
+                  this.$store.state.comparedStations.forEach((station) => {
+                    uniqueValueInfos.push({
+                      value: station.ObjectId,
+                      symbol: {
+                        type: 'picture-marker',
+                        url: 'station-selected.png',
+                        width: '18px',
+                        height: '18px',
+                      },
+                    });
+                  });
+
+                  const renderer = new UniqueValueRenderer({
+                    field: 'ObjectId',
+                    defaultSymbol: stationsSymbol,
+                    uniqueValueInfos,
+                  });
+                  stations.renderer = renderer;
                 });
+
+                if (!stationsLayerClicked && this.$store.state.comparedStations.length > 0) {
+                  this.$store.commit('resetComparedStations');
+                  stations.renderer = {
+                    type: 'simple',
+                    symbol: stationsSymbol,
+                  };
+                }
               });
           });
         },

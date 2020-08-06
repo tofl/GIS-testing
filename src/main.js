@@ -14,6 +14,9 @@ const store = new Vuex.Store({
     addStation(state, station) {
       state.comparedStations.push(station);
     },
+    resetComparedStations(state) {
+      state.comparedStations = [];
+    },
   },
 });
 

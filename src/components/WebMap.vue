@@ -93,7 +93,7 @@ export default {
                   stationsLayerClicked = true;
                   // Check if one of the points is already in the array
                   if (
-                    this.$store.state.comparedStations.map((station) => station.objectId)
+                    this.$store.state.comparedStations.map((station) => station.ObjectId)
                       .indexOf(layer.graphic.attributes.ObjectId) > -1
                   ) { return; }
 
@@ -135,8 +135,8 @@ export default {
                       symbol: {
                         type: 'picture-marker',
                         url: 'station-selected.png',
-                        width: '18px',
-                        height: '18px',
+                        width: '20px',
+                        height: '20px',
                       },
                     });
                   });

@@ -97,8 +97,6 @@ import WebMap from './components/WebMap.vue';
 export default {
   name: 'App',
   components: { WebMap },
-
-  methods: {},
 };
 </script>
 
